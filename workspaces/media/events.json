@@ -1,0 +1,15 @@
+{
+  "updated_at": "2026-04-24T16:24:03.479751",
+  "items": [
+    {
+      "type": "highlights_extract",
+      "timestamp": "2026-04-24T16:24:03.478742",
+      "payload": {
+        "selected": 0,
+        "top_n": 5,
+        "min_duration_seconds": 20.0,
+        "workflow_id": "spec-bot"
+      }
+    }
+  ]
+}

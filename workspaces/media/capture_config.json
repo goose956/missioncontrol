@@ -1,0 +1,7 @@
+{
+  "screenpipe_data_dir": "",
+  "screenpipe_api_url": "http://localhost:3030",
+  "external_media_dirs": [],
+  "auto_index_on_start": false,
+  "updated_at": null
+}

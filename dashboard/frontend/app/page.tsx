@@ -52,6 +52,15 @@ export default async function Home() {
           <Link href="/ideas" className="text-xs px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 rounded-lg text-indigo-700 transition-colors">
             💡 Ideas Lab
           </Link>
+          <Link href="/landing-pages" className="text-xs px-3 py-1.5 bg-orange-50 hover:bg-orange-100 rounded-lg text-orange-700 transition-colors">
+            🧱 Landing Pages
+          </Link>
+          <Link href="/media" className="text-xs px-3 py-1.5 bg-cyan-50 hover:bg-cyan-100 rounded-lg text-cyan-700 transition-colors">
+            🎬 Media Capture
+          </Link>
+          <Link href="/chat/ad-creator" className="text-xs px-3 py-1.5 bg-rose-50 hover:bg-rose-100 rounded-lg text-rose-700 transition-colors">
+            🎯 Ad Creator
+          </Link>
         </div>
       </div>
     </div>

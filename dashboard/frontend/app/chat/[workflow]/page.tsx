@@ -1,4 +1,5 @@
 import { getWorkflows } from "@/lib/api";
+import AdCreatorWorkspace from "@/components/AdCreatorWorkspace";
 import CodeAssistantWorkspace from "@/components/CodeAssistantWorkspace";
 import ChatInterface from "@/components/ChatInterface";
 import SpecificationWorkspace from "@/components/SpecificationWorkspace";
@@ -31,6 +32,10 @@ export default async function ChatPage({ params }: Props) {
 
   if (workflow.id === "coder") {
     return <CodeAssistantWorkspace workflow={workflow} />;
+  }
+
+  if (workflow.id === "ad-creator") {
+    return <AdCreatorWorkspace workflow={workflow} />;
   }
 
   return <div className="h-screen"><ChatInterface workflow={workflow} /></div>;

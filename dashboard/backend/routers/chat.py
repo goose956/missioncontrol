@@ -133,6 +133,18 @@ async def stream_response(workflow: dict, messages: list[Message], save: bool) -
                 doc_parts.append(f"{role_label}\n\n{msg.content}\n\n---\n\n")
             doc_parts.append(f"**Assistant**\n\n{full_response}\n")
             filepath.write_text("".join(doc_parts), encoding="utf-8")
+
+        try:
+            from routers.media import record_event
+            record_event("workflow_save", {
+                "workflow_id": workflow.get("id", ""),
+                "workflow_name": workflow.get("name", ""),
+                "saved_path": str(filepath.relative_to(ROOT)),
+            })
+        except Exception:
+            # Never block chat streaming if event logging fails.
+            pass
+
         yield f"data: {json.dumps({'type': 'saved', 'path': str(filepath.relative_to(ROOT))})}\n\n"
 
     yield f"data: {json.dumps({'type': 'done'})}\n\n"

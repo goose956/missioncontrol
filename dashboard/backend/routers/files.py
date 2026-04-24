@@ -1,6 +1,7 @@
 from pathlib import Path
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import PlainTextResponse, HTMLResponse
+from datetime import datetime
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi.responses import PlainTextResponse, HTMLResponse, FileResponse
 from pydantic import BaseModel
 import markdown as md_lib
 
@@ -26,6 +27,10 @@ WATCHED_FOLDERS = [
 READABLE_EXTENSIONS = {".md", ".txt", ".yaml", ".yml", ".json", ".py", ".ts", ".tsx", ".js", ".html", ".css"}
 
 WRITABLE_EXTENSIONS = {".md", ".txt", ".yaml", ".yml", ".json", ".py", ".ts", ".tsx", ".js", ".html", ".css"}
+
+UPLOADABLE_EXTENSIONS = {
+    ".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".bmp", ".tif", ".tiff", ".ico"
+}
 
 
 class WriteFileRequest(BaseModel):
@@ -76,6 +81,20 @@ def read_file(path: str):
     return PlainTextResponse(safe_path.read_text(encoding="utf-8", errors="replace"))
 
 
+@router.get("/raw")
+def raw_file(path: str):
+    safe_path = ROOT / path.lstrip("/")
+    try:
+        safe_path.resolve().relative_to(ROOT.resolve())
+    except ValueError:
+        raise HTTPException(403, "Access denied")
+
+    if not safe_path.exists() or not safe_path.is_file():
+        raise HTTPException(404, "File not found")
+
+    return FileResponse(safe_path)
+
+
 @router.post("/write")
 def write_file(body: WriteFileRequest):
     safe_path = ROOT / body.path.lstrip("/")
@@ -90,6 +109,36 @@ def write_file(body: WriteFileRequest):
     safe_path.parent.mkdir(parents=True, exist_ok=True)
     safe_path.write_text(body.content, encoding="utf-8")
     return {"ok": True, "path": str(safe_path.relative_to(ROOT)).replace("\\", "/")}
+
+
+@router.post("/upload")
+async def upload_file(file: UploadFile = File(...), folder: str = Form(...)):
+    safe_dir = ROOT / folder.lstrip("/")
+    try:
+        safe_dir.resolve().relative_to(ROOT.resolve())
+    except ValueError:
+        raise HTTPException(403, "Access denied")
+
+    filename = Path(file.filename or "upload.bin").name
+    suffix = Path(filename).suffix.lower()
+    if suffix not in UPLOADABLE_EXTENSIONS:
+        raise HTTPException(400, "File type not uploadable")
+
+    safe_dir.mkdir(parents=True, exist_ok=True)
+    target = safe_dir / filename
+    if target.exists():
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        target = safe_dir / f"{Path(filename).stem}_{timestamp}{suffix}"
+
+    data = await file.read()
+    target.write_bytes(data)
+
+    return {
+        "ok": True,
+        "name": target.name,
+        "path": str(target.relative_to(ROOT)).replace("\\", "/"),
+        "size": len(data),
+    }
 
 
 PRINT_CSS = """

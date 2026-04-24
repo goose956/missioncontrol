@@ -3,9 +3,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const navItems = [
-  { href: "/projects", label: "Projects", icon: "🗂" },
   { href: "/", label: "Dashboard", icon: "⬡" },
+  { href: "/projects", label: "Projects", icon: "🗂" },
   { href: "/ideas", label: "Ideas", icon: "💡" },
+  { href: "/landing-pages", label: "Landing Pages", icon: "🧱" },
+  { href: "/media", label: "Media", icon: "🎬" },
+  { href: "/chat/ad-creator", label: "Ad Creator", icon: "🎯" },
   { href: "/chat/spec-bot", label: "Specification", icon: "📋" },
   { href: "/chat/coder", label: "Code Assistant", icon: "💻" },
   { href: "/files", label: "Files", icon: "📁" },

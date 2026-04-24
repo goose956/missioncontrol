@@ -7,3 +7,4 @@ aiofiles>=24.1.0
 markdown>=3.7
 python-multipart>=0.0.9
 openai>=1.76.0
+pymediainfo>=6.1.0
