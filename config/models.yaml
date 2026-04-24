@@ -1,0 +1,37 @@
+tiers:
+  elite:
+    provider: anthropic
+    model: claude-sonnet-4-6
+    use_for:
+      - architecture
+      - complex_debugging
+      - spec_generation
+      - agent_orchestration_design
+
+  intermediate:
+    provider: openrouter
+    models:
+      - claude-3-haiku-20240307
+      - google/gemini-flash-1.5
+    use_for:
+      - code_refactoring
+      - unit_test_generation
+      - summarization
+      - data_extraction
+
+  local:
+    provider: ollama  # not yet installed — placeholder
+    models:
+      - phi3.5
+      - llama3.1:8b
+    use_for:
+      - formatting
+      - intent_detection
+      - file_operations
+      - local_indexing
+
+routing_rules:
+  # Token budget triggers downgrade to intermediate
+  token_budget_threshold: 50000
+  # Tasks under this complexity score route local
+  complexity_threshold: 0.3

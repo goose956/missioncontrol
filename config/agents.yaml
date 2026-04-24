@@ -1,0 +1,35 @@
+supervisor:
+  model_tier: elite
+  workspace: workspaces/planner
+  can_delegate_to: [planner, coder, media, documents, ideas]
+
+planner:
+  model_tier: elite
+  workspace: workspaces/planner
+  tools: [file_read, file_write, web_search]
+  output: shared/artifacts/plans/
+
+coder:
+  model_tier: intermediate
+  workspace: workspaces/coder
+  tools: [file_read, file_write, bash, git]
+  output: shared/artifacts/code/
+  sandbox: docker  # future
+
+media:
+  model_tier: intermediate
+  workspace: workspaces/media
+  tools: [file_read, pymediainfo, screenpipe_api]
+  output: shared/artifacts/media/
+
+documents:
+  model_tier: intermediate
+  workspace: workspaces/documents
+  tools: [file_read, file_write, weasyprint]
+  output: shared/specs/
+
+ideas:
+  model_tier: intermediate
+  workspace: workspaces/ideas
+  tools: [web_search, tavily, file_write]
+  output: shared/artifacts/research/
