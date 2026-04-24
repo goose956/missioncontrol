@@ -5,3 +5,5 @@ python-dotenv>=1.0.0
 pyyaml>=6.0.2
 aiofiles>=24.1.0
 markdown>=3.7
+python-multipart>=0.0.9
+openai>=1.76.0

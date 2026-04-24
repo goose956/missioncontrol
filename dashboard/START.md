@@ -29,6 +29,20 @@ npm run dev
 
 Runs at: http://localhost:3000
 
+## 3. Configure LLM Providers
+
+Open `http://localhost:3000/settings` and add API keys for:
+
+- Anthropic
+- OpenAI
+- OpenRouter
+
+Then choose provider/model per workflow from the same Settings page.
+
+Local settings are saved to:
+
+- `dashboard/backend/data/llm_settings.json` (gitignored)
+
 ## Adding Workflows
 
 Create a new file: `dashboard/backend/workflows/<name>.yaml`
@@ -52,3 +66,6 @@ Restart the backend — the new workflow appears on the dashboard automatically.
 - Conversations auto-saved to the workflow's `output_folder`
 - Files visible in the `/files` browser
 - Add any folder to `WATCHED_FOLDERS` in `dashboard/backend/routers/files.py`
+- Projects workspace: `/projects`
+- Specification workspace: `/chat/spec-bot`
+- Code Assistant workspace: `/chat/coder`

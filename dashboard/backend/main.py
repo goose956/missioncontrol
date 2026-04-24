@@ -5,10 +5,11 @@ import sys
 from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI
+from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from routers import chat, files, ideas, workflows
+from routers import chat, files, ideas, projects, settings, workflows
 
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
@@ -21,7 +22,7 @@ if sys.stderr and hasattr(sys.stderr, "reconfigure"):
 
 class SafeJSONResponse(JSONResponse):
     def render(self, content) -> bytes:
-        return json.dumps(content, ensure_ascii=True).encode("utf-8")
+        return json.dumps(jsonable_encoder(content), ensure_ascii=True).encode("utf-8")
 
 
 app = FastAPI(title="Mission Control API", default_response_class=SafeJSONResponse)
@@ -37,6 +38,8 @@ app.add_middleware(
 app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
 app.include_router(files.router, prefix="/api/files", tags=["files"])
 app.include_router(ideas.router, prefix="/api/ideas", tags=["ideas"])
+app.include_router(projects.router, prefix="/api/projects", tags=["projects"])
+app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
 app.include_router(workflows.router, prefix="/api/workflows", tags=["workflows"])
 
 

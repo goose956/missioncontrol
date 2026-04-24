@@ -12,3 +12,7 @@ dist/
 .DS_Store
 Thumbs.db
 shared/exports/
+dashboard/backend/data/llm_settings.json
+temp/
+workspaces/projects/projects.json
+workspaces/projects/*/uploads/

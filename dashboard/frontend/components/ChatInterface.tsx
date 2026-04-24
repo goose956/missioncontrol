@@ -13,7 +13,16 @@ interface AttachedFile {
   content: string;
 }
 
-export default function ChatInterface({ workflow }: { workflow: Workflow }) {
+interface ChatInterfaceProps {
+  workflow: Workflow;
+  onSavedPath?: (path: string) => void;
+  draftSeed?: {
+    id: string;
+    text: string;
+  } | null;
+}
+
+export default function ChatInterface({ workflow, onSavedPath, draftSeed }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -36,6 +45,15 @@ export default function ChatInterface({ workflow }: { workflow: Workflow }) {
   useEffect(() => {
     getIdeas().then(setIdeas).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!draftSeed) return;
+    const timer = setTimeout(() => {
+      setInput(draftSeed.text);
+      textareaRef.current?.focus();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [draftSeed]);
 
   // Close ideas dropdown on outside click
   useEffect(() => {
@@ -134,6 +152,7 @@ export default function ChatInterface({ workflow }: { workflow: Workflow }) {
               });
             } else if (event.type === "saved") {
               setSavedPath(event.path);
+              onSavedPath?.(event.path);
             }
           } catch { /* ignore malformed SSE */ }
         }

@@ -1,5 +1,7 @@
 import { getWorkflows } from "@/lib/api";
+import CodeAssistantWorkspace from "@/components/CodeAssistantWorkspace";
 import ChatInterface from "@/components/ChatInterface";
+import SpecificationWorkspace from "@/components/SpecificationWorkspace";
 import { notFound } from "next/navigation";
 
 interface Props {
@@ -22,6 +24,14 @@ export default async function ChatPage({ params }: Props) {
 
   const workflow = workflows.find((w) => w.id === workflowId);
   if (!workflow) notFound();
+
+  if (workflow.id === "spec-bot") {
+    return <SpecificationWorkspace workflow={workflow} />;
+  }
+
+  if (workflow.id === "coder") {
+    return <CodeAssistantWorkspace workflow={workflow} />;
+  }
 
   return <div className="h-screen"><ChatInterface workflow={workflow} /></div>;
 }

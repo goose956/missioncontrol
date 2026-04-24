@@ -13,11 +13,36 @@ import {
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const CATEGORIES = [
-  { value: "saas", label: "SaaS", color: "bg-blue-100 text-blue-700 border-blue-200" },
-  { value: "skill", label: "Skill", color: "bg-purple-100 text-purple-700 border-purple-200" },
-  { value: "landing-page", label: "Landing Page", color: "bg-orange-100 text-orange-700 border-orange-200" },
-  { value: "ad-ideas", label: "Ad Ideas", color: "bg-pink-100 text-pink-700 border-pink-200" },
-  { value: "misc", label: "Misc", color: "bg-gray-100 text-gray-600 border-gray-200" },
+  {
+    value: "saas",
+    label: "SaaS",
+    color: "bg-blue-100 text-blue-700 border-blue-200",
+    row: "bg-blue-50 border-blue-200/80 hover:bg-blue-100/60",
+  },
+  {
+    value: "skill",
+    label: "Skill",
+    color: "bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200",
+    row: "bg-fuchsia-50 border-fuchsia-200/80 hover:bg-fuchsia-100/60",
+  },
+  {
+    value: "landing-page",
+    label: "Landing Page",
+    color: "bg-amber-100 text-amber-700 border-amber-200",
+    row: "bg-amber-50 border-amber-200/80 hover:bg-amber-100/60",
+  },
+  {
+    value: "ad-ideas",
+    label: "Ad Ideas",
+    color: "bg-rose-100 text-rose-700 border-rose-200",
+    row: "bg-rose-50 border-rose-200/80 hover:bg-rose-100/60",
+  },
+  {
+    value: "misc",
+    label: "Misc",
+    color: "bg-slate-100 text-slate-700 border-slate-200",
+    row: "bg-slate-100/70 border-slate-200/90 hover:bg-slate-200/60",
+  },
 ];
 
 const STATUSES = [
@@ -382,7 +407,7 @@ export default function IdeasPage() {
             const sta = statusMeta(idea.status);
 
             return (
-              <div key={idea.id} className="flex items-start gap-4 px-6 py-4 hover:bg-white transition-colors group bg-gray-50">
+              <div key={idea.id} className={`flex items-start gap-4 px-6 py-4 border-b transition-colors group ${cat.row}`}>
                 {/* Rank + arrows */}
                 <div className="flex flex-col items-center gap-0.5 shrink-0 pt-0.5">
                   <span className="text-xs font-bold text-gray-300 w-6 text-center tabular-nums">

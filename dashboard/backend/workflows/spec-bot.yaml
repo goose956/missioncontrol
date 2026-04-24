@@ -4,6 +4,7 @@ description: Create detailed software specifications through guided conversation
 icon: "\U0001F4CB"
 model: claude-opus-4-7
 output_folder: shared/specs
+save_extension: .txt
 
 system_prompt: |
   You are a senior software architect and specification writer. Your job is to help

@@ -3,9 +3,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const navItems = [
+  { href: "/projects", label: "Projects", icon: "🗂" },
   { href: "/", label: "Dashboard", icon: "⬡" },
   { href: "/ideas", label: "Ideas", icon: "💡" },
+  { href: "/chat/spec-bot", label: "Specification", icon: "📋" },
+  { href: "/chat/coder", label: "Code Assistant", icon: "💻" },
   { href: "/files", label: "Files", icon: "📁" },
+  { href: "/settings", label: "Settings", icon: "⚙" },
 ];
 
 export default function Sidebar() {
@@ -24,7 +28,9 @@ export default function Sidebar() {
             key={item.href}
             href={item.href}
             className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-              pathname === item.href
+              (item.href.startsWith("/chat/")
+                ? pathname.startsWith(item.href)
+                : pathname === item.href)
                 ? "bg-indigo-50 text-indigo-700 font-medium"
                 : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
             }`}

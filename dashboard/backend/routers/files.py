@@ -1,6 +1,7 @@
 from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import PlainTextResponse, HTMLResponse
+from pydantic import BaseModel
 import markdown as md_lib
 
 router = APIRouter()
@@ -12,15 +13,24 @@ WATCHED_FOLDERS = [
     "shared/specs",
     "shared/artifacts",
     "shared/exports",
+    "webspace",
     "workspaces/planner",
     "workspaces/coder",
     "workspaces/ideas",
+    "workspaces/projects",
     "workspaces/documents",
     "workspaces/media",
     "workspaces/landing-pages",
 ]
 
 READABLE_EXTENSIONS = {".md", ".txt", ".yaml", ".yml", ".json", ".py", ".ts", ".tsx", ".js", ".html", ".css"}
+
+WRITABLE_EXTENSIONS = {".md", ".txt", ".yaml", ".yml", ".json", ".py", ".ts", ".tsx", ".js", ".html", ".css"}
+
+
+class WriteFileRequest(BaseModel):
+    path: str
+    content: str
 
 
 @router.get("")
@@ -64,6 +74,22 @@ def read_file(path: str):
         raise HTTPException(400, "File type not readable")
 
     return PlainTextResponse(safe_path.read_text(encoding="utf-8", errors="replace"))
+
+
+@router.post("/write")
+def write_file(body: WriteFileRequest):
+    safe_path = ROOT / body.path.lstrip("/")
+    try:
+        safe_path.resolve().relative_to(ROOT.resolve())
+    except ValueError:
+        raise HTTPException(403, "Access denied")
+
+    if safe_path.suffix not in WRITABLE_EXTENSIONS:
+        raise HTTPException(400, "File type not writable")
+
+    safe_path.parent.mkdir(parents=True, exist_ok=True)
+    safe_path.write_text(body.content, encoding="utf-8")
+    return {"ok": True, "path": str(safe_path.relative_to(ROOT)).replace("\\", "/")}
 
 
 PRINT_CSS = """
