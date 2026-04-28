@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import uuid
 from datetime import datetime
@@ -12,13 +13,11 @@ from fastapi.responses import HTMLResponse
 from openai import OpenAI
 from pydantic import BaseModel
 
-from routers.settings import load_settings
-
 router = APIRouter()
 
-ROOT = Path(__file__).parent.parent.parent.parent
-DATA_FILE = ROOT / "workspaces" / "landing-pages" / "landing_pages.json"
-CONTACTS_FILE = ROOT / "workspaces" / "landing-pages" / "contacts.json"
+DATA_DIR = Path(os.getenv("DATA_DIR", str(Path(__file__).parent.parent / "data")))
+DATA_FILE = DATA_DIR / "landing_pages.json"
+CONTACTS_FILE = DATA_DIR / "contacts.json"
 
 STEP_DEFAULTS = [
     {"type": "LANDING", "order": 1, "name": "Landing Page"},
@@ -365,30 +364,17 @@ def all_pages(db: dict) -> list[dict]:
 
 
 def choose_provider_model() -> tuple[str, str, str]:
-    settings = load_settings()
-    wf = settings.get("workflow_settings", {}).get("landing-pages") or {}
-    provider = wf.get("provider", "anthropic")
-    model = wf.get("model", "claude-sonnet-4-6")
+    anthropic_key = os.getenv("ANTHROPIC_API_KEY", "")
+    if anthropic_key:
+        model = os.getenv("MODEL", "claude-sonnet-4-6")
+        return "anthropic", model, anthropic_key
 
-    api_keys = settings.get("api_keys", {})
-    if provider == "anthropic":
-        key = api_keys.get("anthropic", "")
-        if not key:
-            raise HTTPException(400, "Missing Anthropic API key in Settings")
-    elif provider == "openai":
-        key = api_keys.get("openai", "")
-        if not key:
-            raise HTTPException(400, "Missing OpenAI API key in Settings")
-    elif provider == "openrouter":
-        key = api_keys.get("openrouter", "")
-        if not key:
-            raise HTTPException(400, "Missing OpenRouter API key in Settings")
-    elif provider == "ollama":
-        key = "ollama"
-    else:
-        raise HTTPException(400, f"Unsupported provider '{provider}'")
+    openrouter_key = os.getenv("OPENROUTER_API_KEY", "")
+    if openrouter_key:
+        model = os.getenv("MODEL", "anthropic/claude-sonnet-4-5")
+        return "openrouter", model, openrouter_key
 
-    return provider, model, key
+    raise HTTPException(500, "No API key configured. Set ANTHROPIC_API_KEY or OPENROUTER_API_KEY.")
 
 
 def llm_generate(prompt: str, system: str = SYSTEM_PROMPT, max_tokens: int = 8192) -> str:
@@ -403,11 +389,9 @@ def llm_generate(prompt: str, system: str = SYSTEM_PROMPT, max_tokens: int = 819
         text_blocks = [block.text for block in response.content if getattr(block, "type", None) == "text"]
         return "\n".join(text_blocks).strip()
 
-    if provider == "ollama":
-        client = OpenAI(api_key="ollama", base_url="http://localhost:11434/v1")
-    else:
-        base_url = "https://openrouter.ai/api/v1" if provider == "openrouter" else None
-        client = OpenAI(api_key=api_key, base_url=base_url)
+    # openrouter
+    base_url = "https://openrouter.ai/api/v1" if provider == "openrouter" else None
+    client = OpenAI(api_key=api_key, base_url=base_url)
 
     messages = []
     if system:
@@ -592,7 +576,7 @@ def _contact_form_script(page_id: str, api_base: str) -> str:
 </script>"""
 
 
-def inject_contact_form(html: str, page_id: str, api_base: str = "http://localhost:8000") -> str:
+def inject_contact_form(html: str, page_id: str, api_base: str = "") -> str:
     """Inject the universal contact modal into a page."""
     marker = 'id="mc-modal-overlay"'
     if marker in html:
@@ -967,6 +951,12 @@ def get_analytics(page_id: str):
     }
 
 
+@router.get("/p/{slug}")
+def render_public_clean(slug: str):
+    """Clean public URL for visitors — same as /public/{slug}"""
+    return render_public(slug)
+
+
 @router.get("/public/{slug}")
 def render_public(slug: str):
     db = load_db()
@@ -1137,84 +1127,3 @@ def delete_contact(contact_id: str):
         raise HTTPException(404, "Contact not found")
     save_contacts(contacts)
     return {"ok": True}
-
-
-# ---------------------------------------------------------------------------
-# Push to GitHub — sync latest page data to webspace repo and git push
-# ---------------------------------------------------------------------------
-
-@router.post("/push-to-github")
-def push_to_github():
-    """Sync latest landing page data to webspace/landing-pages and push to GitHub."""
-    import shutil
-    import subprocess
-
-    WEBSPACE_DIR = ROOT / "webspace" / "landing-pages"
-    if not WEBSPACE_DIR.exists():
-        raise HTTPException(500, "webspace/landing-pages directory not found")
-
-    # 1. Find the most recently updated page with HTML
-    db = load_db()
-    latest_page = None
-    latest_time = ""
-    for page in all_pages(db):
-        if page.get("html_content") and page.get("updated_at", "") > latest_time:
-            latest_time = page["updated_at"]
-            latest_page = page
-
-    if not latest_page:
-        raise HTTPException(400, "No generated pages found — create at least one page first")
-
-    # 2. Sync data files into webspace repo
-    data_dst = WEBSPACE_DIR / "data"
-    data_dst.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(str(DATA_FILE), str(data_dst / "landing_pages.json"))
-    if CONTACTS_FILE.exists():
-        shutil.copy2(str(CONTACTS_FILE), str(data_dst / "contacts.json"))
-
-    # 3. Git operations
-    def run_git(*args: str):
-        return subprocess.run(
-            ["git"] + list(args),
-            cwd=str(WEBSPACE_DIR),
-            capture_output=True,
-            text=True,
-            timeout=60,
-        )
-
-    # Verify it's a git repo
-    status = run_git("status")
-    if status.returncode != 0:
-        raise HTTPException(
-            500,
-            "webspace/landing-pages is not a git repository. "
-            "Open a terminal, cd into webspace/landing-pages, then run:\n"
-            "  git init\n"
-            "  git remote add origin https://github.com/goose956/landingpages.git\n"
-            "  git branch -M main",
-        )
-
-    # Stage everything
-    run_git("add", ".")
-
-    # Check for changes
-    diff = run_git("status", "--porcelain")
-    slug = latest_page.get("slug") or latest_page.get("id", "")[:8]
-    if not diff.stdout.strip():
-        return {"ok": True, "message": "Already up to date — nothing new to push", "slug": slug}
-
-    # Commit
-    commit = run_git("commit", "-m", f"sync: update landing page data ({slug})")
-    if commit.returncode != 0:
-        raise HTTPException(500, f"Git commit failed:\n{commit.stderr or commit.stdout}")
-
-    # Push
-    push = run_git("push", "-u", "origin", "HEAD")
-    if push.returncode != 0:
-        raise HTTPException(
-            500,
-            f"Git push failed:\n{push.stderr or push.stdout}\n\n"
-            "Make sure you have push access to the repo and git credentials are set up.",
-        )
-
-    return {"ok": True, "message": f"Pushed '{slug}' to GitHub successfully", "slug": slug}

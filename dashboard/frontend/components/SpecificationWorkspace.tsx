@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ChatInterface from "@/components/ChatInterface";
-import { FileEntry, Workflow, getFiles, readFile, writeFile } from "@/lib/api";
+import { FileEntry, Workflow, getFiles, readFile, writeFile, deleteFile } from "@/lib/api";
 
 const SPEC_FOLDER = "shared/specs";
 
@@ -29,6 +29,7 @@ export default function SpecificationWorkspace({ workflow }: { workflow: Workflo
   const [loadingDoc, setLoadingDoc] = useState(false);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<string>("");
+  const [confirmDeletePath, setConfirmDeletePath] = useState<string | null>(null);
 
   const refreshDocs = useCallback(async () => {
     setLoadingDocs(true);
@@ -130,20 +131,58 @@ export default function SpecificationWorkspace({ workflow }: { workflow: Workflo
               <div className="text-xs text-gray-400">No spec docs yet. Send a message in chat to generate one.</div>
             )}
             {docs.map((doc) => (
-              <button
+              <div
                 key={doc.path}
-                onClick={() => loadDoc(doc.path)}
-                className={`shrink-0 w-56 text-left rounded-xl border p-3 transition-colors ${
-                  selectedPath === doc.path
+                className={`relative shrink-0 w-56 rounded-xl border transition-colors overflow-hidden ${
+                  confirmDeletePath === doc.path
+                    ? "border-red-300 bg-red-50"
+                    : selectedPath === doc.path
                     ? "border-indigo-400 bg-indigo-50"
                     : "border-gray-200 bg-white hover:border-gray-300"
                 }`}
               >
-                <div className="text-xs text-gray-400 mb-1">Spec Doc</div>
-                <div className="text-sm font-medium text-gray-900 truncate">{doc.name}</div>
-                <div className="text-xs text-gray-500 mt-2">{formatDate(doc.modified)}</div>
-                <div className="text-[11px] text-gray-400 mt-1 truncate">{doc.path}</div>
-              </button>
+                {confirmDeletePath === doc.path ? (
+                  <div className="p-3 flex flex-col gap-2">
+                    <div className="text-xs font-medium text-red-700">Delete this spec?</div>
+                    <div className="text-xs text-red-500 truncate">{doc.name}</div>
+                    <div className="flex gap-2 mt-1">
+                      <button
+                        onClick={async () => {
+                          await deleteFile(doc.path);
+                          setDocs((prev) => prev.filter((d) => d.path !== doc.path));
+                          if (selectedPath === doc.path) { setSelectedPath(""); setEditorText(""); setLastSavedText(""); }
+                          setConfirmDeletePath(null);
+                        }}
+                        className="flex-1 text-xs bg-red-500 hover:bg-red-600 text-white py-1.5 rounded-lg transition-colors font-medium"
+                      >
+                        Delete
+                      </button>
+                      <button
+                        onClick={() => setConfirmDeletePath(null)}
+                        className="flex-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-100 py-1.5 rounded-lg transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <button onClick={() => loadDoc(doc.path)} className="w-full text-left p-3">
+                      <div className="text-xs text-gray-400 mb-1">Spec Doc</div>
+                      <div className="text-sm font-medium text-gray-900 truncate pr-5">{doc.name}</div>
+                      <div className="text-xs text-gray-500 mt-2">{formatDate(doc.modified)}</div>
+                      <div className="text-[11px] text-gray-400 mt-1 truncate">{doc.path}</div>
+                    </button>
+                    <button
+                      onClick={() => setConfirmDeletePath(doc.path)}
+                      className="absolute top-2 right-2 w-5 h-5 flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors text-xs"
+                      title="Delete spec"
+                    >
+                      ✕
+                    </button>
+                  </>
+                )}
+              </div>
             ))}
           </div>
         </div>

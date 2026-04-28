@@ -1,0 +1,8 @@
+4. Any tech stack preferences, constraints, or integrations needed?
+
+For example:
+- Are there any specific technologies you prefer (e.g., Python, JavaScript)?
+- Do you have any integrations required (e.g., YouTube API)?
+- Are there any constraints in terms of latency or data processing speed?
+
+Can we move forward with this information? If not, please provide more details.

@@ -42,7 +42,7 @@ function ProjectModal({
   ideas: Idea[];
   specFiles: FileEntry[];
   onClose: () => void;
-  onSave: (project: Project) => void;
+  onSave: (project: Project, createUpload?: { files: File[]; note: string }) => Promise<void> | void;
 }) {
   const editing = state.mode === "edit" && state.project;
 
@@ -51,6 +51,8 @@ function ProjectModal({
   const [status, setStatus] = useState(editing ? state.project!.status : "draft");
   const [ideaId, setIdeaId] = useState(editing ? state.project!.idea_id ?? "" : "");
   const [specPath, setSpecPath] = useState(editing ? state.project!.spec_path ?? "" : "");
+  const [newProjectFiles, setNewProjectFiles] = useState<File[]>([]);
+  const [newProjectFileNote, setNewProjectFileNote] = useState("");
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
@@ -75,7 +77,10 @@ function ProjectModal({
           spec_path: specPath || null,
         });
       }
-      onSave(project);
+      const createUpload = !editing && newProjectFiles.length > 0
+        ? { files: newProjectFiles, note: newProjectFileNote }
+        : undefined;
+      await onSave(project, createUpload);
     } finally {
       setSaving(false);
     }
@@ -135,6 +140,39 @@ function ProjectModal({
               </select>
             </div>
           </div>
+
+          {!editing && (
+            <div className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-3">
+              <div className="text-xs font-semibold text-indigo-900 mb-2">Attach Files During Project Creation</div>
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="text-xs px-3 py-1.5 rounded-lg border border-indigo-300 text-indigo-700 bg-white hover:bg-indigo-100 cursor-pointer">
+                  Choose Files
+                  <input
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || []);
+                      if (files.length > 0) setNewProjectFiles(files);
+                      e.currentTarget.value = "";
+                    }}
+                  />
+                </label>
+                <span className="text-xs text-indigo-700">
+                  {newProjectFiles.length > 0 ? `${newProjectFiles.length} file(s) queued for upload` : "No files selected"}
+                </span>
+              </div>
+              <div className="mt-2">
+                <label className="text-xs text-indigo-700 block mb-1">File Note (optional)</label>
+                <input
+                  value={newProjectFileNote}
+                  onChange={(e) => setNewProjectFileNote(e.target.value)}
+                  className="w-full border border-indigo-200 bg-white text-gray-900 placeholder-gray-400 rounded-lg px-3 py-2 text-sm"
+                  placeholder="Context for these files"
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-end gap-3">
@@ -144,7 +182,15 @@ function ProjectModal({
             disabled={saving || !title.trim()}
             className="text-xs bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white px-4 py-2 rounded-lg"
           >
-            {saving ? "Saving..." : editing ? "Save Changes" : "Create Project"}
+            {saving
+              ? editing
+                ? "Saving..."
+                : newProjectFiles.length > 0
+                  ? `Creating + Uploading ${newProjectFiles.length} file(s)...`
+                  : "Creating..."
+              : editing
+                ? "Save Changes"
+                : "Create Project"}
           </button>
         </div>
       </div>
@@ -197,12 +243,24 @@ export default function ProjectsPage() {
 
   const ideaMap = useMemo(() => Object.fromEntries(ideas.map((idea) => [idea.id, idea])), [ideas]);
 
-  const handleModalSave = (project: Project) => {
+  const handleModalSave = async (project: Project, createUpload?: { files: File[]; note: string }) => {
     setProjects((prev) => {
       const exists = prev.some((p) => p.id === project.id);
       if (!exists) return [project, ...prev];
       return prev.map((p) => (p.id === project.id ? project : p));
     });
+
+    if (createUpload && createUpload.files.length > 0) {
+      try {
+        for (const file of createUpload.files) {
+          await uploadProjectFile(project.id, file, createUpload.note || undefined);
+        }
+      } catch {
+        setError("Project created, but one or more initial files failed to upload.");
+      }
+      await loadAll();
+    }
+
     setModal(null);
   };
 

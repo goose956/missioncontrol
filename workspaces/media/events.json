@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-04-24T16:24:03.479751",
+  "updated_at": "2026-04-27T13:09:13.236919",
   "items": [
     {
       "type": "highlights_extract",
@@ -9,6 +9,69 @@
         "top_n": 5,
         "min_duration_seconds": 20.0,
         "workflow_id": "spec-bot"
+      }
+    },
+    {
+      "type": "workflow_save",
+      "timestamp": "2026-04-27T12:54:34.411239",
+      "payload": {
+        "workflow_id": "spec-bot",
+        "workflow_name": "Specification Bot",
+        "saved_path": "shared\\specs\\spec-bot_20260427_125434.txt"
+      }
+    },
+    {
+      "type": "workflow_save",
+      "timestamp": "2026-04-27T12:57:11.656019",
+      "payload": {
+        "workflow_id": "spec-bot",
+        "workflow_name": "Specification Bot",
+        "saved_path": "shared\\specs\\spec-bot_20260427_125711.txt"
+      }
+    },
+    {
+      "type": "workflow_save",
+      "timestamp": "2026-04-27T12:58:51.685196",
+      "payload": {
+        "workflow_id": "spec-bot",
+        "workflow_name": "Specification Bot",
+        "saved_path": "shared\\specs\\spec-bot_20260427_125851.txt"
+      }
+    },
+    {
+      "type": "workflow_save",
+      "timestamp": "2026-04-27T13:02:04.554251",
+      "payload": {
+        "workflow_id": "spec-bot",
+        "workflow_name": "Specification Bot",
+        "saved_path": "shared\\specs\\spec-bot_20260427_130204.txt"
+      }
+    },
+    {
+      "type": "workflow_save",
+      "timestamp": "2026-04-27T13:03:59.406835",
+      "payload": {
+        "workflow_id": "spec-bot",
+        "workflow_name": "Specification Bot",
+        "saved_path": "shared\\specs\\spec-bot_20260427_130359.txt"
+      }
+    },
+    {
+      "type": "workflow_save",
+      "timestamp": "2026-04-27T13:05:15.978692",
+      "payload": {
+        "workflow_id": "spec-bot",
+        "workflow_name": "Specification Bot",
+        "saved_path": "shared\\specs\\spec-bot_20260427_130515.txt"
+      }
+    },
+    {
+      "type": "workflow_save",
+      "timestamp": "2026-04-27T13:09:13.235922",
+      "payload": {
+        "workflow_id": "spec-bot",
+        "workflow_name": "Specification Bot",
+        "saved_path": "shared\\specs\\spec-bot_20260427_130913.txt"
       }
     }
   ]

@@ -111,6 +111,21 @@ def write_file(body: WriteFileRequest):
     return {"ok": True, "path": str(safe_path.relative_to(ROOT)).replace("\\", "/")}
 
 
+@router.delete("/delete")
+def delete_file(path: str):
+    safe_path = ROOT / path.lstrip("/")
+    try:
+        safe_path.resolve().relative_to(ROOT.resolve())
+    except ValueError:
+        raise HTTPException(403, "Access denied")
+
+    if not safe_path.exists() or not safe_path.is_file():
+        raise HTTPException(404, "File not found")
+
+    safe_path.unlink()
+    return {"ok": True, "deleted": path}
+
+
 @router.post("/upload")
 async def upload_file(file: UploadFile = File(...), folder: str = Form(...)):
     safe_dir = ROOT / folder.lstrip("/")

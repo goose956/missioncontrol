@@ -27,6 +27,7 @@ def list_workflows():
             "description": data.get("description", ""),
             "icon": data.get("icon", "🤖"),
             "output_folder": data.get("output_folder", "shared/artifacts"),
+            "auto_save": data.get("auto_save", True),
         })
     return workflows
 

@@ -26,13 +26,32 @@ A local-first autonomous agent ecosystem. Human does high-level design; agents h
 | `config/` | Model routing, agent config | — |
 
 ## Active Milestone
-**Milestone 1** — Spec Bot + workspace scaffolding
+**Milestone 2** — CLI wrap + agent-controllable surface
+
+## CLI — Primary Agent Interface
+
+Every function is accessible via terminal. Always prefer CLI over direct file edits.
+
+```bash
+cd dashboard/backend
+
+python mc.py ideas list --json
+python mc.py ideas create --title "X" --category saas --description "Y" --json
+python mc.py spec --idea-id <id> --json
+python mc.py projects list --json
+python mc.py chat run --workflow coder --message "..." --json
+python mc.py files list --folder shared/specs --json
+```
+
+Full reference: `skills/mc-cli/SKILL.md`
 
 ## Key Conventions
-- Every workspace folder has its own `AGENTS.md` describing the agent contract
-- Specs live in `shared/specs/` as Markdown, rendered to PDF via WeasyPrint
-- All agent outputs are written to `shared/artifacts/` before being promoted
-- Secrets live in `.env` (never committed)
+- Every workspace folder has its own `AGENTS.md` — read it before operating in that workspace
+- All CLI commands support `--json` for agent-readable output (stdout); progress goes to stderr
+- Specs live in `shared/specs/` as Markdown
+- All agent outputs written to workspace folders before being promoted to `shared/artifacts/`
+- Secrets live in `.env` at project root (never committed)
+- When adding a new feature: (1) add to dashboard UI, (2) add to `mc.py`, (3) update workspace `AGENTS.md`, (4) update `skills/mc-cli/SKILL.md`
 
 ## Model Routing (config/models.yaml)
 See `config/models.yaml` for tier assignments.

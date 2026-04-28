@@ -6,6 +6,7 @@ export interface Workflow {
   description: string;
   icon: string;
   output_folder: string;
+  auto_save?: boolean;
 }
 
 export interface FileEntry {
@@ -25,6 +26,26 @@ export async function getWorkflows(): Promise<Workflow[]> {
   const res = await fetch(`${API}/api/workflows`, { cache: "no-store" });
   if (!res.ok) throw new Error("Failed to load workflows");
   return res.json();
+}
+
+export async function saveWorkflowOutput(workflowId: string, content: string, filename?: string): Promise<{ saved_path: string }> {
+  const res = await fetch(`${API}/api/chat/save`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ workflow_id: workflowId, content, filename: filename ?? "" }),
+  });
+  if (!res.ok) throw new Error("Failed to save");
+  return res.json();
+}
+
+export async function deleteSavedOutput(path: string): Promise<void> {
+  const res = await fetch(`${API}/api/chat/saved?path=${encodeURIComponent(path)}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Failed to delete");
+}
+
+export async function deleteFile(path: string): Promise<void> {
+  const res = await fetch(`${API}/api/files/delete?path=${encodeURIComponent(path)}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Failed to delete file");
 }
 
 export async function getFiles(): Promise<FolderGroup[]> {
@@ -205,12 +226,18 @@ export interface SettingsWorkflowOption {
   default_model: string;
 }
 
+export interface OllamaStatus {
+  running: boolean;
+  models: string[];
+}
+
 export interface LlmSettings {
   api_keys: ApiKeysSettings;
   workflow_settings: Record<string, WorkflowModelSetting>;
   model_options: Record<string, string[]>;
   providers: Record<string, string>;
   workflows: SettingsWorkflowOption[];
+  ollama: OllamaStatus;
 }
 
 export async function getSettings(): Promise<LlmSettings> {
@@ -374,6 +401,48 @@ export async function updateLandingPageSettings(stepId: string, data: {
 export async function getLandingAnalytics(pageId: string): Promise<{ view_count: number; signups: LandingPageSignup[] }> {
   const res = await fetch(`${API}/api/landing-pages/analytics/${pageId}`, { cache: "no-store" });
   if (!res.ok) throw await landingApiError(res, "Failed to load landing analytics");
+  return res.json();
+}
+
+export interface LandingContact {
+  id: string;
+  page_id: string;
+  page_slug: string | null;
+  funnel_id: string | null;
+  funnel_name: string | null;
+  name: string;
+  email: string;
+  phone?: string | null;
+  message?: string | null;
+  read: boolean;
+  created_at: string;
+}
+
+export async function getLandingContacts(funnelId?: string): Promise<LandingContact[]> {
+  const url = funnelId
+    ? `${API}/api/landing-pages/contacts?funnel_id=${encodeURIComponent(funnelId)}`
+    : `${API}/api/landing-pages/contacts`;
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw await landingApiError(res, "Failed to load contacts");
+  return res.json();
+}
+
+export async function markContactRead(contactId: string, read = true): Promise<LandingContact> {
+  const res = await fetch(`${API}/api/landing-pages/contacts/${contactId}/read?read=${read}`, {
+    method: "PATCH",
+  });
+  if (!res.ok) throw await landingApiError(res, "Failed to update contact");
+  return res.json();
+}
+
+export async function deleteContact(contactId: string): Promise<void> {
+  const res = await fetch(`${API}/api/landing-pages/contacts/${contactId}`, { method: "DELETE" });
+  if (!res.ok) throw await landingApiError(res, "Failed to delete contact");
+}
+
+export async function pushToGitHub(): Promise<{ ok: boolean; message: string; slug: string }> {
+  const res = await fetch(`${API}/api/landing-pages/push-to-github`, { method: "POST" });
+  if (!res.ok) throw await landingApiError(res, "Push to GitHub failed");
   return res.json();
 }
 

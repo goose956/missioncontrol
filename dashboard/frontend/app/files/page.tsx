@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { getFiles, readFile, API, FolderGroup, FileEntry } from "@/lib/api";
+import { getFiles, readFile, deleteFile, API, FolderGroup, FileEntry } from "@/lib/api";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 
 export default function FilesPage() {
@@ -10,6 +10,8 @@ export default function FilesPage() {
   const [loading, setLoading] = useState(true);
   const [reading, setReading] = useState(false);
   const [error, setError] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   useEffect(() => {
     getFiles()
@@ -23,6 +25,7 @@ export default function FilesPage() {
     setSelected(file);
     setReading(true);
     setContent("");
+    setConfirmDelete(false);
     try {
       const text = await readFile(file.path);
       setContent(text);
@@ -30,6 +33,24 @@ export default function FilesPage() {
       setContent("Error reading file.");
     } finally {
       setReading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selected) return;
+    setDeleting(true);
+    try {
+      await deleteFile(selected.path);
+      setGroups((prev) =>
+        prev.map((g) => ({ ...g, files: g.files.filter((f) => f.path !== selected.path) }))
+      );
+      setSelected(null);
+      setContent("");
+      setConfirmDelete(null);
+    } catch {
+      // ignore
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -60,21 +81,32 @@ export default function FilesPage() {
                 <div className="px-4 py-2 text-xs text-gray-300">empty</div>
               )}
               {group.files.map((file) => (
-                <button
+                <div
                   key={file.path}
-                  onClick={() => openFile(file)}
-                  disabled={!file.readable}
-                  className={`w-full text-left px-4 py-2 text-xs transition-colors flex items-center gap-2 ${
+                  className={`group flex items-center gap-2 px-4 py-2 text-xs transition-colors ${
                     selected?.path === file.path
                       ? "bg-indigo-50 text-indigo-700"
                       : file.readable
                       ? "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                      : "text-gray-300 cursor-default"
+                      : "text-gray-300"
                   }`}
                 >
-                  <span>{fileIcon(file.name)}</span>
-                  <span className="truncate">{file.name}</span>
-                </button>
+                  <button
+                    onClick={() => openFile(file)}
+                    disabled={!file.readable}
+                    className="flex items-center gap-2 flex-1 min-w-0 text-left disabled:cursor-default"
+                  >
+                    <span>{fileIcon(file.name)}</span>
+                    <span className="truncate">{file.name}</span>
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setConfirmDelete(confirmDelete === file.path ? null : file.path); }}
+                    className="text-gray-300 hover:text-red-500 transition-colors shrink-0 px-1 text-sm leading-none"
+                    title="Delete file"
+                  >
+                    ✕
+                  </button>
+                </div>
               ))}
             </div>
           ))}
@@ -109,6 +141,31 @@ export default function FilesPage() {
                 <div className="text-xs text-gray-400">
                   {(selected.size / 1024).toFixed(1)} KB
                 </div>
+                {confirmDelete === selected.path ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-red-500">Delete this file?</span>
+                    <button
+                      onClick={handleDelete}
+                      disabled={deleting}
+                      className="text-xs px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors disabled:opacity-40"
+                    >
+                      {deleting ? "Deleting…" : "Yes, delete"}
+                    </button>
+                    <button
+                      onClick={() => setConfirmDelete(null)}
+                      className="text-xs px-3 py-1 border border-gray-300 text-gray-600 hover:border-gray-400 rounded-lg transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setConfirmDelete(selected.path)}
+                    className="text-xs px-3 py-1 border border-red-200 text-red-500 hover:bg-red-50 hover:border-red-400 rounded-lg transition-colors"
+                  >
+                    Delete
+                  </button>
+                )}
               </div>
             </div>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ApiKeysSettings, LlmSettings, WorkflowModelSetting, getSettings, updateSettings } from "@/lib/api";
+import { ApiKeysSettings, LlmSettings, OllamaStatus, WorkflowModelSetting, getSettings, updateSettings } from "@/lib/api";
 
 const KEY_FIELDS: Array<{ key: keyof ApiKeysSettings; label: string; hint: string }> = [
   { key: "anthropic", label: "Anthropic API Key", hint: "Used for Claude models" },
@@ -42,6 +42,7 @@ export default function SettingsPage() {
   const workflows = useMemo(() => settings?.workflows ?? [], [settings]);
   const providers = settings?.providers ?? {};
   const modelOptions = settings?.model_options ?? {};
+  const ollama: OllamaStatus = settings?.ollama ?? { running: false, models: [] };
 
   const changeProvider = (workflowId: string, provider: string) => {
     const fallbackModel = modelOptions[provider]?.[0] ?? "";
@@ -112,6 +113,41 @@ export default function SettingsPage() {
                 <div className="text-[11px] text-gray-400 mt-1">{field.hint}</div>
               </div>
             ))}
+          </div>
+        </section>
+
+        <section className="bg-white border border-gray-200 rounded-2xl shadow-sm">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-semibold text-gray-900">Ollama (Local Models)</div>
+                <div className="text-xs text-gray-500 mt-1">Run models on your machine — free, private, no API key needed.</div>
+              </div>
+              <div className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${ollama.running ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-500"}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${ollama.running ? "bg-emerald-500" : "bg-gray-400"}`} />
+                {ollama.running ? "Running" : "Offline"}
+              </div>
+            </div>
+          </div>
+          <div className="px-6 py-5">
+            {ollama.running ? (
+              <div>
+                <div className="text-xs text-gray-500 mb-3">Available models — select <span className="font-medium text-gray-700">Ollama (Local)</span> as the provider in any workflow below to use these:</div>
+                <div className="flex flex-wrap gap-2">
+                  {ollama.models.map((m) => (
+                    <span key={m} className="px-2.5 py-1 text-xs font-mono bg-gray-100 text-gray-700 rounded-lg border border-gray-200">{m}</span>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-sm text-gray-500">
+                Ollama is not running.{" "}
+                <span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded">ollama serve</span>
+                {" "}to start it, or{" "}
+                <span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded">ollama pull qwen2.5</span>
+                {" "}to download a model.
+              </div>
+            )}
           </div>
         </section>
 

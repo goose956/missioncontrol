@@ -30,12 +30,21 @@ class ChatRequest(BaseModel):
     save: bool = True
 
 
+class SaveRequest(BaseModel):
+    workflow_id: str
+    content: str
+    filename: str = ""
+
+
 def load_workflow(workflow_id: str) -> dict:
     path = WORKFLOWS_DIR / f"{workflow_id}.yaml"
     if not path.exists():
         raise HTTPException(404, f"Workflow '{workflow_id}' not found")
     with open(path, encoding="utf-8") as f:
         return yaml.safe_load(f)
+
+
+OLLAMA_BASE_URL = "http://localhost:11434/v1"
 
 
 def resolve_runtime_config(workflow: dict) -> tuple[str, str, str]:
@@ -50,15 +59,20 @@ def resolve_runtime_config(workflow: dict) -> tuple[str, str, str]:
     api_key = ""
     if provider == "anthropic":
         api_key = api_keys.get("anthropic") or os.environ.get("ANTHROPIC_API_KEY", "")
+        if not api_key:
+            raise HTTPException(400, "Missing Anthropic API key")
     elif provider == "openai":
         api_key = api_keys.get("openai") or os.environ.get("OPENAI_API_KEY", "")
+        if not api_key:
+            raise HTTPException(400, "Missing OpenAI API key")
     elif provider == "openrouter":
         api_key = api_keys.get("openrouter") or os.environ.get("OPENROUTER_API_KEY", "")
+        if not api_key:
+            raise HTTPException(400, "Missing OpenRouter API key")
+    elif provider == "ollama":
+        api_key = "ollama"  # Ollama doesn't need a real key
     else:
         raise HTTPException(400, f"Unsupported provider '{provider}'")
-
-    if not api_key:
-        raise HTTPException(400, f"Missing API key for provider '{provider}'")
 
     return provider, model, api_key
 
@@ -76,7 +90,12 @@ async def stream_anthropic(api_key: str, model: str, system: str, api_messages: 
 
 
 async def stream_openai_compatible(provider: str, api_key: str, model: str, system: str, api_messages: list[dict]) -> AsyncIterator[str]:
-    base_url = "https://openrouter.ai/api/v1" if provider == "openrouter" else None
+    if provider == "openrouter":
+        base_url = "https://openrouter.ai/api/v1"
+    elif provider == "ollama":
+        base_url = OLLAMA_BASE_URL
+    else:
+        base_url = None
     client = OpenAI(api_key=api_key, base_url=base_url)
 
     openai_messages = [{"role": "system", "content": system}] + api_messages
@@ -109,8 +128,9 @@ async def stream_response(workflow: dict, messages: list[Message], save: bool) -
         full_response += text
         yield f"data: {json.dumps({'type': 'text', 'text': text})}\n\n"
 
-    # Auto-save if enabled and this is a meaningful response
-    if save and full_response.strip():
+    # Auto-save only if workflow allows it and save flag is set
+    workflow_auto_save = workflow.get("auto_save", True)
+    if save and workflow_auto_save and full_response.strip():
         output_folder = workflow.get("output_folder", "shared/artifacts")
         output_dir = ROOT / output_folder
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -161,3 +181,41 @@ async def chat_stream(req: ChatRequest):
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@router.post("/save")
+async def chat_save(req: SaveRequest):
+    """Manually save a workflow response to disk (used when auto_save is false)."""
+    workflow = load_workflow(req.workflow_id)
+    output_dir = ROOT / workflow.get("output_folder", "shared/artifacts")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    save_extension = str(workflow.get("save_extension", ".md"))
+    if not save_extension.startswith("."):
+        save_extension = f".{save_extension}"
+
+    if req.filename.strip():
+        slug = "".join(c if c.isalnum() or c in " -_" else "" for c in req.filename.strip())
+        slug = slug.replace(" ", "-").strip("-")[:60]
+        filename = f"{slug}{save_extension}"
+    else:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{workflow['id']}_{timestamp}{save_extension}"
+
+    filepath = output_dir / filename
+    filepath.write_text(req.content, encoding="utf-8")
+
+    saved_path = str(filepath.relative_to(ROOT)).replace("\\", "/")
+    return {"saved_path": saved_path}
+
+
+@router.delete("/saved")
+async def delete_saved(path: str):
+    """Delete a saved workflow output file."""
+    safe_path = (ROOT / path).resolve()
+    if not str(safe_path).startswith(str(ROOT.resolve())):
+        raise HTTPException(400, "Invalid path")
+    if not safe_path.exists():
+        raise HTTPException(404, "File not found")
+    safe_path.unlink()
+    return {"deleted": path}

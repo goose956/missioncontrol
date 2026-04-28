@@ -22,7 +22,9 @@ function renderMarkdown(md: string): string {
   const flushCode = () => {
     if (codeBuffer.length) {
       const escaped = escapeHtml(codeBuffer.join("\n"));
-      output.push(`<pre><code class="language-${codeLang}">${escaped}</code></pre>`);
+      output.push(
+        `<pre style="background:#f3f4f6;border:1px solid #e5e7eb;border-radius:8px;padding:12px 14px;overflow-x:auto;margin:8px 0;"><code style="font-family:ui-monospace,monospace;font-size:12px;color:#1f2937;background:none;" class="language-${codeLang}">${escaped}</code></pre>`
+      );
       codeBuffer = [];
       codeLang = "";
     }
@@ -98,7 +100,7 @@ function inlineFormat(text: string): string {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/`([^`]+)`/g, '<code style="background:#f3f4f6;border:1px solid #e5e7eb;border-radius:4px;padding:1px 5px;font-family:ui-monospace,monospace;font-size:12px;color:#1f2937;">$1</code>')
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/__([^_]+)__/g, "<strong>$1</strong>")
     .replace(/\*([^*]+)\*/g, "<em>$1</em>")
