@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowRight, ChevronRight, Plus, Trash2, Zap } from "lucide-react";
 import { LandingFunnel, createLandingFunnel, deleteLandingFunnel, getLandingFunnels } from "@/lib/api";
 
@@ -35,14 +35,7 @@ export default function LandingPagesDashboard() {
     [funnels],
   );
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      loadFunnels();
-    }, 0);
-    return () => clearTimeout(timer);
-  }, []);
-
-  async function loadFunnels() {
+  const loadFunnels = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -52,7 +45,14 @@ export default function LandingPagesDashboard() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadFunnels();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [loadFunnels]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();

@@ -1,112 +1,113 @@
 # Mission Control Project Status
 
-Updated: 2026-04-24
+Updated: 2026-04-28
 
 ## Overview
 
-Mission Control is currently in a functional internal MVP stage with a working FastAPI backend and Next.js frontend dashboard.
+Mission Control is in an internal alpha stage with a broad, working feature surface across chat workflows, project operations, landing pages, ad creation, and media indexing.
 
-Core architecture is local-first: workflows are configured as YAML, outputs are saved into workspace folders, and the dashboard exposes chat, ideas, projects, file browsing, and settings.
+Architecture remains local-first: workflow YAML definitions drive chat behavior, outputs are saved to workspace folders, and runtime state is stored in local JSON files.
 
-## What Has Been Implemented
+## Implemented Surface
 
-### Dashboard foundation
+### Backend API modules
 
-- FastAPI backend with routers for:
+- FastAPI routers mounted in `dashboard/backend/main.py`:
   - `chat`
   - `files`
   - `ideas`
   - `projects`
   - `settings`
+  - `landing-pages`
+  - `media`
   - `workflows`
-- Next.js frontend with left navigation and dedicated workspaces/pages.
+- Safe JSON encoding for responses via `SafeJSONResponse`.
 
-### Workflow chat system
+### Frontend workspaces/routes
+
+- Primary dashboard pages in `dashboard/frontend/app/`:
+  - `/`
+  - `/projects`
+  - `/ideas`
+  - `/landing-pages`
+  - `/media`
+  - `/files`
+  - `/settings`
+  - `/chat/[workflow]` with dedicated behavior for `spec-bot`, `coder`, and `ad-creator`.
+- Landing pages detail routes implemented:
+  - `/landing-pages/[id]`
+  - `/landing-pages/[id]/analytics`
+  - `/landing-pages/[id]/steps/[stepId]`
+  - `/landing-pages/contacts`
+
+### Workflow chat and output
 
 - Dynamic workflow loading from `dashboard/backend/workflows/*.yaml`.
-- Streaming responses (SSE) in chat UI.
-- Auto-save of workflow outputs to configured output folders.
-- Save extension support per workflow (`save_extension`).
-- `spec-bot` configured to save `.txt` outputs for easier editing.
+- SSE-based chat streaming.
+- Per-workflow save behavior, including extension control (`save_extension`).
+- Workflow save events emitted into media timeline (`workflow_save`).
 
-### Specification workspace
+### Projects and file handling
 
-- Dedicated `Specification` route (`/chat/spec-bot`) with split layout:
-  - Left: chat (1/3 desktop)
-  - Right: document thumbnails + full text editor (2/3 desktop)
-- Spec docs loaded from `shared/specs`.
-- In-app save back to disk through backend file write endpoint.
+- Projects CRUD with idea/spec linking and status tracking.
+- Project file uploads saved under `workspaces/projects/<project_id>/uploads`.
+- New-project modal supports attaching files during project creation (create + upload in one flow).
+- File API includes read/write/upload/raw helpers for local artifacts.
 
-### Ideas workspace
+### Landing pages
 
-- Ideas CRUD + ranking/reordering + status/category filters.
-- AI rewrite/enhance flow for idea descriptions.
-- Brighter color-coded idea rows by category.
+- Native funnel CRUD and step-level page editing flow.
+- Analytics view with per-step views and signup exports.
+- Contacts route added for lead visibility.
 
-### Projects workspace
+### Ad Creator and Media
 
-- New `Projects` page at `/projects` to centralize work:
-  - Create/edit/delete projects
-  - Link each project to an idea and spec document
-  - Track project status
-- File upload flow with drag/drop and file picker.
-- Upload prompt asks which project files should be saved to.
-- Upload files stored under `workspaces/projects/<project_id>/uploads`.
-- Projects persisted in `workspaces/projects/projects.json` (runtime file).
+- Dedicated ad creator workflow route with image-centric workspace.
+- Media workspace supports:
+  - source configuration
+  - Screenpipe connectivity checks
+  - index refresh
+  - highlight extraction
+  - timeline with workflow/event filters
+  - thumbnail generation (ffmpeg if available)
+  - opening media paths and saved artifacts
+  - recording-readiness guidance and setup checks
 
-### Code Assistant workspace
+### Settings and model routing
 
-- `Code Assistant` moved to dedicated route (`/chat/coder`) below `Specification` in sidebar.
-- Split workspace with:
-  - Left: chat
-  - Right: preview URL panel (`iframe`) for app preview
-  - Project loader panel to push project context into composer
-  - "Created Software" inventory based on `webspace/`
-  - Saved code session list from `workspaces/coder/`
+- UI/API support for Anthropic, OpenAI, and OpenRouter keys.
+- Per-workflow provider/model settings.
+- Runtime provider resolution in chat router.
 
-### Files workspace enhancements
+### CLI progress
 
-- File browser includes additional folders including:
-  - `workspaces/projects`
-  - `webspace`
-- Read endpoint for text-based files.
-- Write endpoint for editable text files in dashboard.
-- Print endpoint for Markdown export flow.
+- `dashboard/backend/mc.py` now exists as a multi-command Mission Control CLI scaffold.
+- `typer` and `rich` are included in backend requirements for CLI surfaces.
 
-### LLM settings and model selection
+## Current Health Snapshot
 
-- New `Settings` page at `/settings`.
-- Supports API key storage for:
-  - Anthropic
-  - OpenAI
-  - OpenRouter
-- Per-workflow provider/model selection from the UI.
-- Backend `chat` router resolves provider/model from saved settings.
-- Provider routing implemented:
-  - Anthropic API
-  - OpenAI API
-  - OpenRouter via OpenAI-compatible client and base URL
-- Settings persisted locally in:
-  - `dashboard/backend/data/llm_settings.json` (gitignored)
+- Frontend diagnostics are currently clean after landing-pages and chat hook fixes.
+- Repo is in active development with multiple uncommitted tracked/untracked changes.
+- No formal automated test suite is established yet.
 
 ## Current Developer Workflow
 
-1. Start backend: `cd dashboard/backend && uvicorn main:app --reload --port 8000`
-2. Start frontend: `cd dashboard/frontend && npm run dev`
-3. Open dashboard: `http://localhost:3000`
-4. Add/update provider keys/models: `http://localhost:3000/settings`
+1. Backend: `cd dashboard/backend && uvicorn main:app --reload --port 8000`
+2. Frontend: `cd dashboard/frontend && npm run dev`
+3. Dashboard: `http://localhost:3000`
+4. Health check: `http://localhost:8000/api/health`
 
-## Known Scope / Gaps
+## Known Gaps
 
-- No formal automated test suite yet (unit/integration/e2e).
-- Local trusted-environment assumptions still apply.
-- Runtime data files are local-first and not intended as canonical production storage.
+- No automated regression coverage (unit/integration/e2e).
+- Local JSON persistence is suitable for local operations but not a production-grade shared database layer.
+- Ongoing branch churn means release checkpoints should be cut more frequently.
 
 ## Key Paths
 
 - Backend entry: `dashboard/backend/main.py`
-- Frontend layout/nav: `dashboard/frontend/app/layout.tsx`, `dashboard/frontend/components/Sidebar.tsx`
-- Workflows config: `dashboard/backend/workflows/`
-- Settings API: `dashboard/backend/routers/settings.py`
-- Chat provider routing: `dashboard/backend/routers/chat.py`
-- Project docs/output locations: `shared/specs/`, `workspaces/coder/`, `workspaces/projects/`, `webspace/`
+- Backend routers: `dashboard/backend/routers/`
+- Workflow definitions: `dashboard/backend/workflows/`
+- Frontend nav: `dashboard/frontend/components/Sidebar.tsx`
+- Frontend routes: `dashboard/frontend/app/`
+- Runtime data roots: `workspaces/`, `shared/`, `webspace/`

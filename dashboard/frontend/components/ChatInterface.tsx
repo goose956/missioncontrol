@@ -169,7 +169,7 @@ export default function ChatInterface({ workflow, onSavedPath, draftSeed }: Chat
     } finally {
       setStreaming(false);
     }
-  }, [input, messages, streaming, workflow.id, attachedFile]);
+  }, [input, messages, streaming, workflow.id, attachedFile, onSavedPath]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {

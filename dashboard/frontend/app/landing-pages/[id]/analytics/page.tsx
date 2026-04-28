@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Download, Eye, Mail, TrendingUp } from "lucide-react";
 import { LandingFunnel, LandingPageSignup, getLandingAnalytics, getLandingFunnel } from "@/lib/api";
 
@@ -34,14 +34,7 @@ export default function LandingAnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      load();
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [id]);
-
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -69,7 +62,14 @@ export default function LandingAnalyticsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [id]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      load();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [load]);
 
   const totalViews = useMemo(() => Object.values(analytics).reduce((sum, item) => sum + (item.view_count || 0), 0), [analytics]);
   const totalSignups = useMemo(() => Object.values(analytics).reduce((sum, item) => sum + (item.signups?.length || 0), 0), [analytics]);
@@ -201,7 +201,7 @@ export default function LandingAnalyticsPage() {
                 <div className="px-6 py-8 text-center">
                   <p className="text-white/35 text-sm">Generate this page to start tracking views and signups.</p>
                   <button onClick={() => router.push(`/landing-pages/${id}/steps/${step.id}`)} className="mt-3 text-indigo-300 hover:text-indigo-200 text-sm underline">
-                    Open editor ->
+                    Open editor {"->"}
                   </button>
                 </div>
               )}

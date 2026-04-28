@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -59,19 +59,12 @@ export default function LandingFunnelDetailPage() {
   const [nameValue, setNameValue] = useState("");
   const [togglingStep, setTogglingStep] = useState<string | null>(null);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      loadFunnel();
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [id]);
-
   const generatedCount = useMemo(
     () => (funnel ? funnel.steps.filter((step) => Boolean(step.page?.html_content)).length : 0),
     [funnel],
   );
 
-  async function loadFunnel() {
+  const loadFunnel = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -83,7 +76,14 @@ export default function LandingFunnelDetailPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [id]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadFunnel();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [loadFunnel]);
 
   async function saveName() {
     if (!funnel) return;
