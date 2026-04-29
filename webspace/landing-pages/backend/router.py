@@ -1127,3 +1127,35 @@ def delete_contact(contact_id: str):
         raise HTTPException(404, "Contact not found")
     save_contacts(contacts)
     return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# Sync endpoint — receive page data pushed from Mission Control
+# ---------------------------------------------------------------------------
+
+from fastapi import Header
+
+@router.post("/sync")
+def sync_from_mission_control(
+    payload: dict,
+    x_sync_secret: Optional[str] = Header(None),
+):
+    """Accept a full landing_pages DB pushed from local Mission Control."""
+    secret = os.getenv("SYNC_SECRET", "")
+    if secret and x_sync_secret != secret:
+        raise HTTPException(403, "Invalid sync secret")
+
+    if "funnels" not in payload:
+        raise HTTPException(400, "Invalid payload — expected {funnels: [...]}")
+
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    with open(DATA_FILE, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, indent=2)
+
+    funnel_count = len(payload.get("funnels", []))
+    page_count = sum(
+        1 for f in payload.get("funnels", [])
+        for s in f.get("steps", [])
+        if s.get("page", {}).get("html_content")
+    )
+    return {"ok": True, "funnels": funnel_count, "pages_with_html": page_count}

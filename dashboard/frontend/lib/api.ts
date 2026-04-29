@@ -6,7 +6,6 @@ export interface Workflow {
   description: string;
   icon: string;
   output_folder: string;
-  auto_save?: boolean;
 }
 
 export interface FileEntry {
@@ -28,26 +27,6 @@ export async function getWorkflows(): Promise<Workflow[]> {
   return res.json();
 }
 
-export async function saveWorkflowOutput(workflowId: string, content: string, filename?: string): Promise<{ saved_path: string }> {
-  const res = await fetch(`${API}/api/chat/save`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ workflow_id: workflowId, content, filename: filename ?? "" }),
-  });
-  if (!res.ok) throw new Error("Failed to save");
-  return res.json();
-}
-
-export async function deleteSavedOutput(path: string): Promise<void> {
-  const res = await fetch(`${API}/api/chat/saved?path=${encodeURIComponent(path)}`, { method: "DELETE" });
-  if (!res.ok) throw new Error("Failed to delete");
-}
-
-export async function deleteFile(path: string): Promise<void> {
-  const res = await fetch(`${API}/api/files/delete?path=${encodeURIComponent(path)}`, { method: "DELETE" });
-  if (!res.ok) throw new Error("Failed to delete file");
-}
-
 export async function getFiles(): Promise<FolderGroup[]> {
   const res = await fetch(`${API}/api/files`, { cache: "no-store" });
   if (!res.ok) throw new Error("Failed to load files");
@@ -67,6 +46,15 @@ export async function writeFile(path: string, content: string): Promise<void> {
     body: JSON.stringify({ path, content }),
   });
   if (!res.ok) throw new Error("Failed to write file");
+}
+
+export async function deleteFile(path: string): Promise<void> {
+  const res = await fetch(`${API}/api/files/delete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path }),
+  });
+  if (!res.ok) throw new Error("Failed to delete file");
 }
 
 export async function uploadWorkspaceFile(folder: string, file: File): Promise<{ ok: boolean; name: string; path: string; size: number }> {
@@ -226,18 +214,33 @@ export interface SettingsWorkflowOption {
   default_model: string;
 }
 
-export interface OllamaStatus {
-  running: boolean;
-  models: string[];
-}
-
 export interface LlmSettings {
   api_keys: ApiKeysSettings;
   workflow_settings: Record<string, WorkflowModelSetting>;
   model_options: Record<string, string[]>;
   providers: Record<string, string>;
   workflows: SettingsWorkflowOption[];
-  ollama: OllamaStatus;
+}
+
+export interface SavedApiKey {
+  id: string;
+  name: string;
+  provider: string;
+  masked_key: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SavedApiKeyList {
+  items: SavedApiKey[];
+}
+
+export interface SavedApiKeyInput {
+  name: string;
+  provider: string;
+  api_key: string;
+  notes?: string;
 }
 
 export async function getSettings(): Promise<LlmSettings> {
@@ -254,6 +257,37 @@ export async function updateSettings(settings: Pick<LlmSettings, "api_keys" | "w
   });
   if (!res.ok) throw new Error("Failed to save settings");
   return res.json();
+}
+
+export async function getSavedApiKeys(): Promise<SavedApiKeyList> {
+  const res = await fetch(`${API}/api/settings/keys`, { cache: "no-store" });
+  if (!res.ok) throw new Error("Failed to load saved API keys");
+  return res.json();
+}
+
+export async function createSavedApiKey(data: SavedApiKeyInput): Promise<SavedApiKey> {
+  const res = await fetch(`${API}/api/settings/keys`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to create API key");
+  return res.json();
+}
+
+export async function updateSavedApiKey(id: string, data: SavedApiKeyInput): Promise<SavedApiKey> {
+  const res = await fetch(`${API}/api/settings/keys/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to update API key");
+  return res.json();
+}
+
+export async function deleteSavedApiKey(id: string): Promise<void> {
+  const res = await fetch(`${API}/api/settings/keys/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Failed to delete API key");
 }
 
 export interface LandingPageSignup {
@@ -428,9 +462,7 @@ export async function getLandingContacts(funnelId?: string): Promise<LandingCont
 }
 
 export async function markContactRead(contactId: string, read = true): Promise<LandingContact> {
-  const res = await fetch(`${API}/api/landing-pages/contacts/${contactId}/read?read=${read}`, {
-    method: "PATCH",
-  });
+  const res = await fetch(`${API}/api/landing-pages/contacts/${contactId}/read?read=${read}`, { method: "PATCH" });
   if (!res.ok) throw await landingApiError(res, "Failed to update contact");
   return res.json();
 }
@@ -443,6 +475,12 @@ export async function deleteContact(contactId: string): Promise<void> {
 export async function pushToGitHub(): Promise<{ ok: boolean; message: string; slug: string }> {
   const res = await fetch(`${API}/api/landing-pages/push-to-github`, { method: "POST" });
   if (!res.ok) throw await landingApiError(res, "Push to GitHub failed");
+  return res.json();
+}
+
+export async function syncToProduction(): Promise<{ ok: boolean; message: string; funnels: number; pages: number }> {
+  const res = await fetch(`${API}/api/landing-pages/sync-to-production`, { method: "POST" });
+  if (!res.ok) throw await landingApiError(res, "Sync to production failed");
   return res.json();
 }
 

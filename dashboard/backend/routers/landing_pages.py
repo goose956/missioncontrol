@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import uuid
 from datetime import datetime
@@ -1218,3 +1219,64 @@ def push_to_github():
         )
 
     return {"ok": True, "message": f"Pushed '{slug}' to GitHub successfully", "slug": slug}
+
+
+# ---------------------------------------------------------------------------
+# Sync to Production — POST local DB directly to Railway backend
+# ---------------------------------------------------------------------------
+
+@router.post("/sync-to-production")
+def sync_to_production():
+    """Send the full local landing_pages DB to the live Railway backend."""
+    import urllib.error
+    import urllib.request
+
+    try:
+        production_url = os.getenv("PRODUCTION_LP_URL", "").rstrip("/")
+        sync_secret = os.getenv("PRODUCTION_LP_SECRET", "")
+
+        if not production_url:
+            raise HTTPException(
+                400,
+                "PRODUCTION_LP_URL is not set. Add it to your .env:\n"
+                "PRODUCTION_LP_URL=https://landingpages-production-2dc8.up.railway.app",
+            )
+
+        db = load_db()
+        funnels = db.get("funnels", [])
+        page_count = sum(
+            1 for f in funnels
+            for s in f.get("steps", [])
+            if s.get("page", {}).get("html_content")
+        )
+
+        if page_count == 0:
+            raise HTTPException(400, "No generated pages found locally — generate at least one page first")
+
+        payload = json.dumps(db).encode("utf-8")
+        req = urllib.request.Request(
+            f"{production_url}/sync",
+            data=payload,
+            headers={
+                "Content-Type": "application/json",
+                "X-Sync-Secret": sync_secret,
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            result = json.loads(resp.read())
+
+        return {
+            "ok": True,
+            "message": f"Synced {result.get('funnels', 0)} funnels ({result.get('pages_with_html', 0)} pages) to production",
+            "funnels": result.get("funnels", 0),
+            "pages": result.get("pages_with_html", 0),
+        }
+
+    except HTTPException:
+        raise
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")
+        raise HTTPException(500, f"Production API returned {e.code}: {body}")
+    except Exception as e:
+        raise HTTPException(500, f"Sync failed: {type(e).__name__}: {e}")

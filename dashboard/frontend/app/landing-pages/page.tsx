@@ -3,8 +3,16 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowRight, ChevronRight, Plus, Trash2, Zap } from "lucide-react";
-import { LandingFunnel, createLandingFunnel, deleteLandingFunnel, getLandingFunnels } from "@/lib/api";
+import { ArrowRight, ChevronRight, GitBranch, Inbox, Plus, RefreshCw, Trash2, Zap } from "lucide-react";
+import {
+  LandingFunnel,
+  createLandingFunnel,
+  deleteLandingFunnel,
+  getLandingContacts,
+  getLandingFunnels,
+  pushToGitHub,
+  syncToProduction,
+} from "@/lib/api";
 
 const STEP_LABELS: Record<string, string> = { LANDING: "Landing", UPSELL: "Upsell", THANKS: "Thanks" };
 const STEP_COLORS: Record<string, string> = {
@@ -23,12 +31,17 @@ export default function LandingPagesDashboard() {
   const [funnels, setFunnels] = useState<LandingFunnel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const [showModal, setShowModal] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const [pushing, setPushing] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [pushResult, setPushResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   const sortedFunnels = useMemo(
     () => [...funnels].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
@@ -45,12 +58,17 @@ export default function LandingPagesDashboard() {
     } finally {
       setLoading(false);
     }
+    // Contacts count is non-critical — don't break the page if it fails
+    try {
+      const contacts = await getLandingContacts();
+      setUnreadCount(contacts.filter((c) => !c.read).length);
+    } catch {
+      // backend may not have contacts endpoint yet
+    }
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      loadFunnels();
-    }, 0);
+    const timer = setTimeout(loadFunnels, 0);
     return () => clearTimeout(timer);
   }, [loadFunnels]);
 
@@ -87,24 +105,86 @@ export default function LandingPagesDashboard() {
     }
   }
 
+  async function handlePush() {
+    setPushing(true);
+    setPushResult(null);
+    try {
+      const result = await pushToGitHub();
+      setPushResult({ ok: true, message: result.message });
+    } catch (err) {
+      setPushResult({ ok: false, message: err instanceof Error ? err.message : "Push failed" });
+    } finally {
+      setPushing(false);
+      setTimeout(() => setPushResult(null), 8000);
+    }
+  }
+
+  async function handleSync() {
+    setSyncing(true);
+    setPushResult(null);
+    try {
+      const result = await syncToProduction();
+      setPushResult({ ok: true, message: result.message });
+    } catch (err) {
+      setPushResult({ ok: false, message: err instanceof Error ? err.message : "Sync failed" });
+    } finally {
+      setSyncing(false);
+      setTimeout(() => setPushResult(null), 8000);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-white">
+      {/* Header */}
       <div className="border-b border-white/10 bg-slate-900/80 backdrop-blur sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 sm:px-8 py-4 sm:py-5 flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold">My Funnels</h1>
             <p className="text-white/50 text-sm mt-0.5">Build AI-powered marketing funnels</p>
           </div>
-          <button
-            onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold text-sm transition-colors"
-          >
-            <Plus size={16} />
-            New Funnel
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleSync}
+              disabled={syncing}
+              title="Send all local pages directly to the live Railway app"
+              className="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-indigo-500/15 border border-white/10 hover:border-indigo-400/40 text-white/60 hover:text-indigo-300 rounded-xl font-semibold text-sm transition-colors disabled:opacity-50"
+            >
+              <RefreshCw size={15} className={syncing ? "animate-spin" : ""} />
+              {syncing ? "Syncing…" : "Sync to Production"}
+            </button>
+            <button
+              onClick={handlePush}
+              disabled={pushing}
+              title="Push code changes to GitHub"
+              className="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-emerald-500/15 border border-white/10 hover:border-emerald-400/40 text-white/60 hover:text-emerald-300 rounded-xl font-semibold text-sm transition-colors disabled:opacity-50"
+            >
+              <GitBranch size={15} />
+              {pushing ? "Pushing…" : "Push to GitHub"}
+            </button>
+            <Link
+              href="/landing-pages/contacts"
+              className="relative flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl font-semibold text-sm transition-colors"
+            >
+              <Inbox size={15} />
+              Contacts
+              {unreadCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-violet-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                  {unreadCount}
+                </span>
+              )}
+            </Link>
+            <button
+              onClick={() => setShowModal(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold text-sm transition-colors"
+            >
+              <Plus size={16} />
+              New Funnel
+            </button>
+          </div>
         </div>
       </div>
 
+      {/* Body */}
       <div className="max-w-6xl mx-auto px-4 sm:px-8 py-6 sm:py-8">
         {loading && <div className="text-white/50 py-12">Loading funnels...</div>}
 
@@ -135,6 +215,30 @@ export default function LandingPagesDashboard() {
 
         {!loading && !error && sortedFunnels.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Contacts admin card */}
+            <Link
+              href="/landing-pages/contacts"
+              className="group bg-slate-900 border border-violet-500/20 hover:border-violet-400/50 rounded-2xl p-5 transition-all hover:-translate-y-0.5 flex flex-col gap-3"
+            >
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-xl bg-violet-500/15 border border-violet-400/20 flex items-center justify-center">
+                  <Inbox size={20} className="text-violet-300" />
+                </div>
+                {unreadCount > 0 && (
+                  <span className="px-2.5 py-1 bg-violet-500 text-white text-xs font-bold rounded-full">
+                    {unreadCount} new
+                  </span>
+                )}
+              </div>
+              <div>
+                <h3 className="font-bold text-white">Contacts &amp; Enquiries</h3>
+                <p className="text-white/40 text-sm mt-0.5">View all quote requests and form submissions across your pages</p>
+              </div>
+              <div className="flex items-center gap-1 text-violet-400 text-xs font-semibold mt-auto">
+                Open admin <ArrowRight size={13} />
+              </div>
+            </Link>
+
             {sortedFunnels.map((funnel) => {
               const generated = generatedCount(funnel);
               return (
@@ -192,8 +296,26 @@ export default function LandingPagesDashboard() {
         </div>
       </div>
 
+      {/* Push to GitHub toast */}
+      {pushResult && (
+        <div
+          className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl border text-sm font-medium ${
+            pushResult.ok
+              ? "bg-emerald-900/90 border-emerald-500/40 text-emerald-200"
+              : "bg-red-900/90 border-red-500/40 text-red-200"
+          }`}
+        >
+          <span>{pushResult.ok ? "✓" : "✗"}</span>
+          <span className="max-w-sm">{pushResult.message}</span>
+        </div>
+      )}
+
+      {/* Create funnel modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" onClick={(e) => e.target === e.currentTarget && setShowModal(false)}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
+          onClick={(e) => e.target === e.currentTarget && setShowModal(false)}
+        >
           <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-md shadow-2xl">
             <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
               <h2 className="text-white font-semibold text-lg">Create New Funnel</h2>
@@ -201,7 +323,6 @@ export default function LandingPagesDashboard() {
                 ✕
               </button>
             </div>
-
             <form onSubmit={handleCreate} className="px-6 py-5 space-y-4">
               <div>
                 <label className="block text-white/70 text-sm font-medium mb-1.5">Funnel name *</label>
@@ -222,9 +343,12 @@ export default function LandingPagesDashboard() {
                   className="w-full bg-slate-800 border border-white/15 focus:border-indigo-400/60 rounded-xl px-4 py-2.5 text-white text-sm outline-none resize-none"
                 />
               </div>
-
               <div className="flex gap-3 pt-1">
-                <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-sm font-medium">
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="flex-1 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-sm font-medium"
+                >
                   Cancel
                 </button>
                 <button
